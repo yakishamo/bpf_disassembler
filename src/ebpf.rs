@@ -100,25 +100,25 @@ impl Opcode {
     }
   }
 
-	pub fn class(&self) -> u8 {
-		(self.byte & 0b0000_0111) as u8
-	}
+  pub fn class(&self) -> u8 {
+    (self.byte & 0b0000_0111) as u8
+  }
 
-	pub fn aj_src(&self) -> u8 {
-		(self.byte & 0b0000_1000) as u8
-	}
+  pub fn aj_src(&self) -> u8 {
+    (self.byte & 0b0000_1000) as u8
+  }
 
-	pub fn aj_code(&self) -> u8 {
-		(self.byte & 0b1111_0000) as u8
-	}
+  pub fn aj_code(&self) -> u8 {
+    (self.byte & 0b1111_0000) as u8
+  }
 
-	pub fn ld_size(&self) -> u8 {
-		(self.byte & 0b0001_1000) as u8
-	}
+  pub fn ls_size(&self) -> u8 {
+    (self.byte & 0b0001_1000) as u8
+  }
 
-	pub fn ls_mode(&self) -> u8 {
-		(self.byte & 0b1110_0000) as u8
-	}
+  pub fn ls_mode(&self) -> u8 {
+    (self.byte & 0b1110_0000) as u8
+  }
 
   pub fn print(&self) {
     if self.is_arithmetic || self.is_jmp {
@@ -171,7 +171,7 @@ impl Opcode {
           }
         }
       } else if self.is_jmp {
-        match self.aj_code()  {
+        match self.aj_code() {
           BPF_JA => {
             if self.class() != BPF_JMP {
               panic!("BPF_JA found but class is not BPF_JMP");
@@ -243,7 +243,7 @@ impl Opcode {
         _ => {
           panic!(
             "unknown load or store instruction(0x{:02x})",
-						self.ls_mode()
+            self.ls_mode()
           );
         }
       }
@@ -277,55 +277,109 @@ impl Instruction {
     }
   }
 
-	// It returns true if it needs 64 bit immidiate
-	// If is_int is true, print itself as 64 bit integer
-  pub fn print(&self, addr: u64, is_int: bool) -> bool{
+  // It returns true if it needs 64 bit immidiate
+  // If is_int is true, print itself as 64 bit integer
+  pub fn print(&self, addr: u64, is_int: bool) -> bool {
     print!("0x{:08x}: ", addr);
     self.print_bytes();
     print!(" ");
 
-		if is_int {
-			println!("0x{:x}", self.0);
-			return false;
-		}
+    if is_int {
+      println!("0x{:x}", self.0);
+      return false;
+    }
 
     let opcode = self.opcode();
     opcode.print();
     print!(" ");
 
     if opcode.is_arithmetic {
-			print!("r{}", self.dst());
+      print!("r{}", self.dst());
       match opcode.byte & 0xf0 {
         BPF_END => {
           println!("byte swap");
           return false;
         }
         _ => {
-          if (opcode.byte & BPF_X) == BPF_X {
-						print!(" ,r{}", self.src());
-          } else {
-            print!(" ,0x{:x}", self.imm());
-          }
+          match opcode.aj_src() {
+            BPF_X => {
+              print!(", r{}", self.src());
+            }
+            BPF_K => {
+              print!(", 0x{:x}", self.imm());
+            }
+            _ => {
+              panic!("what??");
+            }
+          };
         }
       };
-    } else if opcode.is_jmp { 
-			match opcode.byte & 0xf0 {
-				BPF_CALL => {
-					print!("0x{:x}", self.imm());
+    } else if opcode.is_jmp {
+      match opcode.aj_code() {
+        BPF_CALL => {
+          print!("0x{:x}", self.imm());
+        }
+        BPF_EXIT => {
+          println!("");
+        }
+        BPF_JA => {
+          print!("0x{:x}", self.offset());
+        }
+        _ => {
+          print!("0x{:x}, r{}, r{}", self.offset(), self.dst(), self.src());
+        }
+      };
+    } else if opcode.is_load_store {
+			let mut size_str = String::from("u");
+			match opcode.ls_size() {
+				BPF_W => {
+					size_str.push_str("32");
 				},
-				BPF_EXIT => {
-					println!("");
+				BPF_H => {
+					size_str.push_str("16");
 				},
-				BPF_JA => {
-					print!("0x{:x}", self.offset());
+				BPF_B => {
+					size_str.push_str("8");
+				},
+				BPF_DW => {
+					size_str.push_str("64");
 				},
 				_ => {
-					print!("0x{:x} ,r{} ,r{}", self.offset(), self.dst(), self.src());
+					panic!("what??");
+				},
+			}
+
+			match opcode.ls_mode() {
+				BPF_IMM => {
+					return true;
+				},
+				BPF_MEM => {
+					// TODO : immidiate size check
+					match opcode.class() {
+						BPF_LD => {
+							panic!("not implemented");
+						},
+						BPF_LDX => {
+							print!("r{}, [r{} + 0x{:x}]", self.dst(), self.src(), self.offset());
+							},
+						BPF_ST => {
+							print!("[r{} + 0x{:x}], 0x{:x}", self.dst(), self.offset(), self.imm());
+						},
+						BPF_STX => {
+							print!("[r{} + 0x{:x}], r{}", self.dst(), self.offset(), self.src());
+							},
+						_ => {
+							panic!("what??");
+						},
+					};
+				},
+				_ => {
+					panic!("load store mode 0x{:x} is not implemented.", opcode.ls_mode());
 				},
 			};
-		}
+			}
     println!("");
-		false
+    false
   }
 }
 
@@ -354,7 +408,7 @@ impl Code {
   }
 
   pub fn disassemble(&self) {
-		let mut is_int = false;
+    let mut is_int = false;
     for (i, inst) in self.instructions.iter().enumerate() {
       is_int = inst.print(i as u64, is_int);
     }
