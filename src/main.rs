@@ -18,7 +18,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   for section in &elf.section_headers {
     if section.is_executable() {
-			if let Some(name) = elf.shdr_strtab.get_at(section.sh_name) {
+      if let Some(name) = elf.shdr_strtab.get_at(section.sh_name) {
         println!("{}", name);
         let start = section.sh_offset as usize;
         let end = start + section.sh_size as usize;
@@ -27,8 +27,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let code = ebpf::Code::new_load(text_bytes);
         code.disassemble();
       } else {
-				panic!("elf.shdr_strtab.get_at() failed");
-			}
+        panic!("elf.shdr_strtab.get_at() failed");
+      }
     }
   }
   Ok(())

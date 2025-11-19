@@ -53,7 +53,7 @@ pub const BPF_JSLE: u8 = 0xD0;
 // Load and store instructions
 //   size modifier
 pub const BPF_W: u8 = 0x00;
-pub const BPF_H: u8 = 0x80;
+pub const BPF_H: u8 = 0x08;
 pub const BPF_B: u8 = 0x10;
 pub const BPF_DW: u8 = 0x18;
 
