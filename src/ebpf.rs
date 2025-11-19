@@ -100,6 +100,22 @@ impl Opcode {
     }
   }
 
+	pub fn aj_src() -> u8 {
+		self.byte & 0b0000_1000 as u8
+	}
+
+	pub fn aj_code() -> u8 {
+		self.byte & 0b1111_0000 as u8
+	}
+
+	pub fn ld_size() -> u8 {
+		self.byte & 0b0001_1000 as u8
+	}
+
+	pub fn ld_mode() -> u8 {
+		self.byte & 0b1110_0000 as u8
+	}
+
   pub fn print(&self) {
     if self.is_arithmetic || self.is_jmp {
       if self.is_arithmetic {
