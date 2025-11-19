@@ -101,107 +101,109 @@ impl Opcode {
   }
 
   pub fn print(&self) {
-    if self.is_arithmetic {
-      match self.byte & 0xf0 {
-        BPF_ADD => {
-          print!("add");
-        }
-        BPF_SUB => {
-          print!("sub");
-        }
-        BPF_MUL => {
-          print!("mul");
-        }
-        BPF_DIV => {
-          print!("div");
-        }
-        BPF_OR => {
-          print!("or");
-        }
-        BPF_AND => {
-          print!("and");
-        }
-        BPF_LSH => {
-          print!("lsh");
-        }
-        BPF_RSH => {
-          print!("rsh");
-        }
-        BPF_NEG => {
-          print!("neg");
-        }
-        BPF_MOD => {
-          print!("mod");
-        }
-        BPF_XOR => {
-          print!("xor");
-        }
-        BPF_MOV => {
-          print!("mov");
-        }
-        BPF_ARSH => {
-          print!("arsh");
-        }
-        BPF_END => {
-          print!("end");
-        }
-        _ => {
-          panic!("unknown arithmetic opcode(0x{:02x})", self.byte & 0xf0);
-        }
-      }
-    } else if self.is_jmp {
-      match self.byte & 0xf0 {
-        BPF_JA => {
-          if self.byte & 0x0f != BPF_JMP {
-            panic!("BPF_JA found but class is not BPF_JMP");
+    if self.is_arithmetic || self.is_jmp {
+      if self.is_arithmetic {
+        match self.byte & 0xf0 {
+          BPF_ADD => {
+            print!("add");
           }
-          print!("ja");
-        }
-        BPF_JEQ => {
-          print!("jeq");
-        }
-        BPF_JGT => {
-          print!("jgt");
-        }
-        BPF_JGE => {
-          print!("jge");
-        }
-        BPF_JSET => {
-          print!("jset");
-        }
-        BPF_JNE => {
-          print!("jne");
-        }
-        BPF_JSGT => {
-          print!("jsgt");
-        }
-        BPF_JSGE => {
-          print!("jsge");
-        }
-        BPF_CALL => {
-          print!("call");
-        }
-        BPF_EXIT => {
-          if self.byte & 0x0f != BPF_JMP {
-            panic!("BPF_JA found but class is not BPF_JMP");
+          BPF_SUB => {
+            print!("sub");
           }
+          BPF_MUL => {
+            print!("mul");
+          }
+          BPF_DIV => {
+            print!("div");
+          }
+          BPF_OR => {
+            print!("or");
+          }
+          BPF_AND => {
+            print!("and");
+          }
+          BPF_LSH => {
+            print!("lsh");
+          }
+          BPF_RSH => {
+            print!("rsh");
+          }
+          BPF_NEG => {
+            print!("neg");
+          }
+          BPF_MOD => {
+            print!("mod");
+          }
+          BPF_XOR => {
+            print!("xor");
+          }
+          BPF_MOV => {
+            print!("mov");
+          }
+          BPF_ARSH => {
+            print!("arsh");
+          }
+          BPF_END => {
+            print!("end");
+          }
+          _ => {
+            panic!("unknown arithmetic opcode(0x{:02x})", self.byte & 0xf0);
+          }
+        }
+      } else if self.is_jmp {
+        match self.byte & 0xf0 {
+          BPF_JA => {
+            if self.byte & 0x0f != BPF_JMP {
+              panic!("BPF_JA found but class is not BPF_JMP");
+            }
+            print!("ja");
+          }
+          BPF_JEQ => {
+            print!("jeq");
+          }
+          BPF_JGT => {
+            print!("jgt");
+          }
+          BPF_JGE => {
+            print!("jge");
+          }
+          BPF_JSET => {
+            print!("jset");
+          }
+          BPF_JNE => {
+            print!("jne");
+          }
+          BPF_JSGT => {
+            print!("jsgt");
+          }
+          BPF_JSGE => {
+            print!("jsge");
+          }
+          BPF_CALL => {
+            print!("call");
+          }
+          BPF_EXIT => {
+            if self.byte & 0x0f != BPF_JMP {
+              panic!("BPF_JA found but class is not BPF_JMP");
+            }
 
-          print!("exit");
-        }
-        BPF_JLT => {
-          print!("jlt");
-        }
-        BPF_JLE => {
-          print!("jle");
-        }
-        BPF_JSLT => {
-          print!("jslt");
-        }
-        BPF_JSLE => {
-          print!("jsle");
-        }
-        _ => {
-          panic!("unknown jmp opcode(0x{:02x})", self.byte & 0xf0);
+            print!("exit");
+          }
+          BPF_JLT => {
+            print!("jlt");
+          }
+          BPF_JLE => {
+            print!("jle");
+          }
+          BPF_JSLT => {
+            print!("jslt");
+          }
+          BPF_JSLE => {
+            print!("jsle");
+          }
+          _ => {
+            panic!("unknown jmp opcode(0x{:02x})", self.byte & 0xf0);
+          }
         }
       }
     } else if self.is_load_store {
@@ -232,8 +234,8 @@ impl Opcode {
 struct Instruction(u64);
 
 impl Instruction {
-  pub fn imm(&self) -> u32 {
-    ((self.0 >> 32) & 0xffff_ffff) as u32
+  pub fn imm(&self) -> i32 {
+    ((self.0 >> 32) & 0xffff_ffff) as i32
   }
   pub fn offset(&self) -> u16 {
     ((self.0 >> 16) & 0xffff) as u16
@@ -244,21 +246,59 @@ impl Instruction {
   pub fn dst(&self) -> u8 {
     ((self.0 >> 8) & 0x0f) as u8
   }
-  pub fn opcode(&self) -> u8 {
-    (self.0 & 0xff) as u8
+  pub fn opcode(&self) -> Opcode {
+    Opcode::new((self.0 & 0xff) as u8)
   }
 
-  pub fn print_bytes(&self) {
+  fn print_bytes(&self) {
     let bytes = self.0.to_le_bytes();
     for b in bytes {
       print!("{:02x} ", b);
     }
   }
 
-  pub fn print_inst(&self) {
-    let opcode = Opcode::new(self.opcode());
+  pub fn print(&self, addr: u64) {
+    print!("0x{:08x}: ", addr);
+    self.print_bytes();
+    print!(" ");
+
+    let opcode = self.opcode();
     opcode.print();
-    println!();
+    print!(" ");
+
+    if opcode.is_arithmetic {
+			print!("r{}", self.dst());
+      match opcode.byte & 0xf0 {
+        BPF_END => {
+          println!("byte swap");
+          return;
+        }
+        _ => {
+          if (opcode.byte & BPF_X) == BPF_X {
+						print!(",r{}", self.src());
+          } else {
+            print!(",0x{:x}", self.imm());
+          }
+        }
+      };
+    } else if opcode.is_jmp { 
+			match opcode.byte & 0xf0 {
+				BPF_CALL => {
+					print!("0x{:x}", self.imm());
+				},
+				BPF_EXIT => {
+					println!("");
+				},
+				BPF_JA => {
+					print!("0x{:x}", self.offset());
+				},
+				_ => {
+					print!("0x{:x},r{},r{}", self.offset(), self.dst(), self.src());
+				},
+			};
+		}
+
+    println!("");
   }
 }
 
@@ -288,10 +328,7 @@ impl Code {
 
   pub fn disassemble(&self) {
     for (i, inst) in self.instructions.iter().enumerate() {
-      print!("0x{:08x}: ", i);
-      inst.print_bytes();
-
-      inst.print_inst();
+      inst.print(i as u64);
     }
   }
 }
