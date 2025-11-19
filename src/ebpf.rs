@@ -100,26 +100,30 @@ impl Opcode {
     }
   }
 
-	pub fn aj_src() -> u8 {
-		self.byte & 0b0000_1000 as u8
+	pub fn class(&self) -> u8 {
+		(self.byte & 0b0000_0111) as u8
 	}
 
-	pub fn aj_code() -> u8 {
-		self.byte & 0b1111_0000 as u8
+	pub fn aj_src(&self) -> u8 {
+		(self.byte & 0b0000_1000) as u8
 	}
 
-	pub fn ld_size() -> u8 {
-		self.byte & 0b0001_1000 as u8
+	pub fn aj_code(&self) -> u8 {
+		(self.byte & 0b1111_0000) as u8
 	}
 
-	pub fn ld_mode() -> u8 {
-		self.byte & 0b1110_0000 as u8
+	pub fn ld_size(&self) -> u8 {
+		(self.byte & 0b0001_1000) as u8
+	}
+
+	pub fn ls_mode(&self) -> u8 {
+		(self.byte & 0b1110_0000) as u8
 	}
 
   pub fn print(&self) {
     if self.is_arithmetic || self.is_jmp {
       if self.is_arithmetic {
-        match self.byte & 0xf0 {
+        match self.aj_code() {
           BPF_ADD => {
             print!("add");
           }
@@ -167,9 +171,9 @@ impl Opcode {
           }
         }
       } else if self.is_jmp {
-        match self.byte & 0xf0 {
+        match self.aj_code()  {
           BPF_JA => {
-            if self.byte & 0x0f != BPF_JMP {
+            if self.class() != BPF_JMP {
               panic!("BPF_JA found but class is not BPF_JMP");
             }
             print!("ja");
@@ -199,7 +203,7 @@ impl Opcode {
             print!("call");
           }
           BPF_EXIT => {
-            if self.byte & 0x0f != BPF_JMP {
+            if self.class() != BPF_JMP {
               panic!("BPF_JA found but class is not BPF_JMP");
             }
 
@@ -223,7 +227,7 @@ impl Opcode {
         }
       }
     } else if self.is_load_store {
-      match self.byte & 0x07 {
+      match self.class() {
         BPF_LD => {
           print!("ld");
         }
@@ -239,7 +243,7 @@ impl Opcode {
         _ => {
           panic!(
             "unknown load or store instruction(0x{:02x})",
-            self.byte & 0x07
+						self.ls_mode()
           );
         }
       }
@@ -273,10 +277,17 @@ impl Instruction {
     }
   }
 
-  pub fn print(&self, addr: u64) {
+	// It returns true if it needs 64 bit immidiate
+	// If is_int is true, print itself as 64 bit integer
+  pub fn print(&self, addr: u64, is_int: bool) -> bool{
     print!("0x{:08x}: ", addr);
     self.print_bytes();
     print!(" ");
+
+		if is_int {
+			println!("0x{:x}", self.0);
+			return false;
+		}
 
     let opcode = self.opcode();
     opcode.print();
@@ -287,13 +298,13 @@ impl Instruction {
       match opcode.byte & 0xf0 {
         BPF_END => {
           println!("byte swap");
-          return;
+          return false;
         }
         _ => {
           if (opcode.byte & BPF_X) == BPF_X {
-						print!(",r{}", self.src());
+						print!(" ,r{}", self.src());
           } else {
-            print!(",0x{:x}", self.imm());
+            print!(" ,0x{:x}", self.imm());
           }
         }
       };
@@ -309,12 +320,12 @@ impl Instruction {
 					print!("0x{:x}", self.offset());
 				},
 				_ => {
-					print!("0x{:x},r{},r{}", self.offset(), self.dst(), self.src());
+					print!("0x{:x} ,r{} ,r{}", self.offset(), self.dst(), self.src());
 				},
 			};
 		}
-
     println!("");
+		false
   }
 }
 
@@ -329,22 +340,23 @@ impl Code {
     }
   }
 
-  pub fn load(&mut self, i: &[u8]) {
-    for chunk in i.chunks_exact(8) {
+  pub fn load(&mut self, bytecode: &[u8]) {
+    for chunk in bytecode.chunks_exact(8) {
       let n = u64::from_le_bytes(chunk.try_into().unwrap());
       self.instructions.push(Instruction(n));
     }
   }
 
-  pub fn new_load(i: &[u8]) -> Self {
+  pub fn new_load(bytecode: &[u8]) -> Self {
     let mut inst = Self::new();
-    inst.load(i);
+    inst.load(bytecode);
     inst
   }
 
   pub fn disassemble(&self) {
+		let mut is_int = false;
     for (i, inst) in self.instructions.iter().enumerate() {
-      inst.print(i as u64);
+      is_int = inst.print(i as u64, is_int);
     }
   }
 }
