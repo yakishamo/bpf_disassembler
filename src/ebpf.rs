@@ -351,7 +351,7 @@ impl Instruction {
 
       match opcode.ls_mode() {
         BPF_IMM => {
-          println!("");
+          println!("r{},", self.dst());
           return true;
         }
         BPF_MEM => {
