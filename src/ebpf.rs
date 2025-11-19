@@ -285,7 +285,7 @@ impl Instruction {
     print!(" ");
 
     if is_int {
-      println!("0x{:x}", self.0);
+      println!("0x{:x}", self.0.to_be());
       return false;
     }
 
