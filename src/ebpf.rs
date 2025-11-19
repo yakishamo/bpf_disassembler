@@ -330,54 +330,62 @@ impl Instruction {
         }
       };
     } else if opcode.is_load_store {
-			let mut size_str = String::from("u");
-			match opcode.ls_size() {
-				BPF_W => {
-					size_str.push_str("32");
-				},
-				BPF_H => {
-					size_str.push_str("16");
-				},
-				BPF_B => {
-					size_str.push_str("8");
-				},
-				BPF_DW => {
-					size_str.push_str("64");
-				},
-				_ => {
-					panic!("what??");
-				},
-			}
+      let mut size_str = String::from("u");
+      match opcode.ls_size() {
+        BPF_W => {
+          size_str.push_str("32");
+        }
+        BPF_H => {
+          size_str.push_str("16");
+        }
+        BPF_B => {
+          size_str.push_str("8");
+        }
+        BPF_DW => {
+          size_str.push_str("64");
+        }
+        _ => {
+          panic!("what??");
+        }
+      }
 
-			match opcode.ls_mode() {
-				BPF_IMM => {
-					return true;
-				},
-				BPF_MEM => {
-					// TODO : immidiate size check
-					match opcode.class() {
-						BPF_LD => {
-							panic!("not implemented");
-						},
-						BPF_LDX => {
-							print!("r{}, [r{} + 0x{:x}]", self.dst(), self.src(), self.offset());
-							},
-						BPF_ST => {
-							print!("[r{} + 0x{:x}], 0x{:x}", self.dst(), self.offset(), self.imm());
-						},
-						BPF_STX => {
-							print!("[r{} + 0x{:x}], r{}", self.dst(), self.offset(), self.src());
-							},
-						_ => {
-							panic!("what??");
-						},
-					};
-				},
-				_ => {
-					panic!("load store mode 0x{:x} is not implemented.", opcode.ls_mode());
-				},
-			};
-			}
+      match opcode.ls_mode() {
+        BPF_IMM => {
+          return true;
+        }
+        BPF_MEM => {
+          // TODO : immidiate size check
+          match opcode.class() {
+            BPF_LD => {
+              panic!("not implemented");
+            }
+            BPF_LDX => {
+              print!("r{}, [r{} + 0x{:x}]", self.dst(), self.src(), self.offset());
+            }
+            BPF_ST => {
+              print!(
+                "[r{} + 0x{:x}], 0x{:x}",
+                self.dst(),
+                self.offset(),
+                self.imm()
+              );
+            }
+            BPF_STX => {
+              print!("[r{} + 0x{:x}], r{}", self.dst(), self.offset(), self.src());
+            }
+            _ => {
+              panic!("what??");
+            }
+          };
+        }
+        _ => {
+          panic!(
+            "load store mode 0x{:x} is not implemented.",
+            opcode.ls_mode()
+          );
+        }
+      };
+    }
     println!("");
     false
   }
