@@ -1,3 +1,5 @@
+use crate::symbol;
+
 // Instruction classes
 pub const BPF_LD: u8 = 0x00;
 pub const BPF_LDX: u8 = 0x01;
@@ -125,46 +127,46 @@ impl Opcode {
       if self.is_arithmetic {
         match self.aj_code() {
           BPF_ADD => {
-            print!("add");
+            print!("add ");
           }
           BPF_SUB => {
-            print!("sub");
+            print!("sub ");
           }
           BPF_MUL => {
-            print!("mul");
+            print!("mul ");
           }
           BPF_DIV => {
-            print!("div");
+            print!("div ");
           }
           BPF_OR => {
-            print!("or");
+            print!("or  ");
           }
           BPF_AND => {
-            print!("and");
+            print!("and ");
           }
           BPF_LSH => {
-            print!("lsh");
+            print!("lsh ");
           }
           BPF_RSH => {
-            print!("rsh");
+            print!("rsh ");
           }
           BPF_NEG => {
-            print!("neg");
+            print!("neg ");
           }
           BPF_MOD => {
-            print!("mod");
+            print!("mod ");
           }
           BPF_XOR => {
-            print!("xor");
+            print!("xor ");
           }
           BPF_MOV => {
-            print!("mov");
+            print!("mov ");
           }
           BPF_ARSH => {
             print!("arsh");
           }
           BPF_END => {
-            print!("end");
+            print!("end ");
           }
           _ => {
             panic!("unknown arithmetic opcode(0x{:02x})", self.byte & 0xf0);
@@ -176,22 +178,22 @@ impl Opcode {
             if self.class() != BPF_JMP {
               panic!("BPF_JA found but class is not BPF_JMP");
             }
-            print!("ja");
+            print!("ja  ");
           }
           BPF_JEQ => {
-            print!("jeq");
+            print!("jeq ");
           }
           BPF_JGT => {
-            print!("jgt");
+            print!("jgt ");
           }
           BPF_JGE => {
-            print!("jge");
+            print!("jge ");
           }
           BPF_JSET => {
             print!("jset");
           }
           BPF_JNE => {
-            print!("jne");
+            print!("jne ");
           }
           BPF_JSGT => {
             print!("jsgt");
@@ -210,10 +212,10 @@ impl Opcode {
             print!("exit");
           }
           BPF_JLT => {
-            print!("jlt");
+            print!("jlt ");
           }
           BPF_JLE => {
-            print!("jle");
+            print!("jle ");
           }
           BPF_JSLT => {
             print!("jslt");
@@ -229,16 +231,16 @@ impl Opcode {
     } else if self.is_load_store {
       match self.class() {
         BPF_LD => {
-          print!("ld");
+          print!("ld  ");
         }
         BPF_LDX => {
-          print!("ldx");
+          print!("ldx ");
         }
         BPF_ST => {
-          print!("st");
+          print!("st  ");
         }
         BPF_STX => {
-          print!("stx");
+          print!("stx ");
         }
         _ => {
           panic!(
@@ -393,33 +395,30 @@ impl Instruction {
 }
 
 pub struct Code {
+	start_virt_addr: u64,
   instructions: Vec<Instruction>,
 }
 
 impl Code {
   pub fn new() -> Self {
     Self {
+			start_virt_addr: 0,
       instructions: Vec::new(),
     }
   }
 
-  pub fn load(&mut self, bytecode: &[u8]) {
+  pub fn load(&mut self, bytecode: &[u8], addr: u64) {
+		self.start_virt_addr = addr;
     for chunk in bytecode.chunks_exact(8) {
       let n = u64::from_le_bytes(chunk.try_into().unwrap());
       self.instructions.push(Instruction(n));
     }
   }
 
-  pub fn new_load(bytecode: &[u8]) -> Self {
-    let mut inst = Self::new();
-    inst.load(bytecode);
-    inst
-  }
-
-  pub fn disassemble(&self) {
+  pub fn disassemble(&self, symbol_table: symbol::SymbolTable) {
     let mut is_int = false;
     for (i, inst) in self.instructions.iter().enumerate() {
-      is_int = inst.print(i as u64, is_int);
+      is_int = inst.print(i as u64 * 0x8 + self.start_virt_addr, is_int);
     }
   }
 }
