@@ -1,4 +1,5 @@
 use crate::symbol;
+use goblin::elf::Elf;
 
 // Instruction classes
 pub const BPF_LD: u8 = 0x00;
@@ -281,7 +282,7 @@ impl Instruction {
 
   // It returns true if it needs 64 bit immidiate
   // If is_int is true, print itself as 64 bit integer
-  pub fn print(&self, addr: u64, is_int: bool) -> bool {
+  pub fn print(&self, addr: u64, is_int: bool, elf: &Elf) -> bool {
     print!("0x{:08x}: ", addr);
     self.print_bytes();
     print!(" ");
@@ -319,10 +320,10 @@ impl Instruction {
     } else if opcode.is_jmp {
       match opcode.aj_code() {
         BPF_CALL => {
-          print!("0x{:x}", self.imm());
+					let call_addr = (self.imm() as u64 + 1) * 0x8 + addr;
+					print!("0x{:x}", call_addr);
         }
         BPF_EXIT => {
-          println!("");
         }
         BPF_JA => {
           print!("0x{:x}", self.offset());
@@ -395,30 +396,30 @@ impl Instruction {
 }
 
 pub struct Code {
-	start_virt_addr: u64,
+  start_virt_addr: u64,
   instructions: Vec<Instruction>,
 }
 
 impl Code {
   pub fn new() -> Self {
     Self {
-			start_virt_addr: 0,
+      start_virt_addr: 0,
       instructions: Vec::new(),
     }
   }
 
   pub fn load(&mut self, bytecode: &[u8], addr: u64) {
-		self.start_virt_addr = addr;
+    self.start_virt_addr = addr;
     for chunk in bytecode.chunks_exact(8) {
       let n = u64::from_le_bytes(chunk.try_into().unwrap());
       self.instructions.push(Instruction(n));
     }
   }
 
-  pub fn disassemble(&self, symbol_table: symbol::SymbolTable) {
+  pub fn disassemble(&self, elf: &Elf) {
     let mut is_int = false;
     for (i, inst) in self.instructions.iter().enumerate() {
-      is_int = inst.print(i as u64 * 0x8 + self.start_virt_addr, is_int);
+      is_int = inst.print(i as u64 * 0x8 + self.start_virt_addr, is_int, elf);
     }
   }
 }
